@@ -1,6 +1,7 @@
 import TopHeader from "./components/TopHeader";
 import HeroSection from "./components/HeroSection";
 import DepartmentGrid from "./components/DepartmentGrid";
+import BountyPredictor from "./components/BountyPredictor";
 
 function App() {
   return (
@@ -8,6 +9,7 @@ function App() {
       <TopHeader />
       <HeroSection />
       <DepartmentGrid />
+      <BountyPredictor />
     </div>
   );
 }
