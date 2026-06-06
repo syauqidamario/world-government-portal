@@ -9,21 +9,56 @@ export default function App() {
   const [passcode, setPasscode] = useState("");
   const [loginError, setLoginError] = useState("");
 
-  // State untuk form publik (Tiket)
+  // State form publik dengan pemisahan amount dan desc (HANYA DITULIS SEKALI)
   const [formData, setFormData] = useState({
     name: "",
     faction: "",
     targetYonko: "Shanks",
     purpose: "Aliansi Militer",
-    tribute: "",
+    tribute_amount: 0,
+    tribute_desc: "",
   });
+
   const [ticket, setTicket] = useState(null);
   const [isPrinting, setIsPrinting] = useState(false);
+
+  // State untuk Deep Learning Forecaster
+  const [predictionScore, setPredictionScore] = useState(null);
+  const [isPredicting, setIsPredicting] = useState(false);
+
+  // --- FUNGSI MENGAMBIL PREDIKSI KERAS (DEEP LEARNING) ---
+  const handlePredict = async () => {
+    setIsPredicting(true);
+    try {
+      const response = await fetch("http://127.0.0.1:8001/api/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          target_yonko: formData.targetYonko,
+          purpose: formData.purpose,
+          tribute_amount: Number(formData.tribute_amount),
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPredictionScore(data.probability);
+      } else {
+        const errorData = await response.json();
+        alert(`AI Ditolak Server: ${JSON.stringify(errorData)}`);
+      }
+    } catch (error) {
+      alert(
+        "KONEKSI GAGAL: Server Neural Network Yonko tidak merespons. Pastikan uvicorn berjalan.",
+      );
+    } finally {
+      setIsPredicting(false);
+    }
+  };
 
   // --- FUNGSI LOGIN ---
   const handleLogin = (e) => {
     e.preventDefault();
-    // Kata sandi rahasia: haoshoku
     if (passcode.toLowerCase() === "haoshoku") {
       setView("admin");
       setPasscode("");
@@ -46,7 +81,8 @@ export default function App() {
           faction: formData.faction,
           target_yonko: formData.targetYonko,
           purpose: formData.purpose,
-          tribute: formData.tribute,
+          tribute_amount: Number(formData.tribute_amount),
+          tribute_desc: formData.tribute_desc,
         }),
       });
 
@@ -58,7 +94,8 @@ export default function App() {
           faction: dbTicket.faction,
           targetYonko: dbTicket.target_yonko,
           purpose: dbTicket.purpose,
-          tribute: dbTicket.tribute,
+          tributeAmount: dbTicket.tribute_amount,
+          tributeDesc: dbTicket.tribute_desc,
           ticketNo: dbTicket.ticket_no,
           dateIssued: dbTicket.date_issued,
           status: dbTicket.status,
@@ -167,7 +204,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* MAIN CONTENT (Tetap sama seperti sebelumnya) */}
+      {/* MAIN CONTENT */}
       <main className="max-w-6xl mx-auto px-6 py-12 relative z-10">
         <div className="text-center max-w-2xl mx-auto mb-16">
           <h2 className="text-xs font-bold text-red-500 uppercase tracking-[0.3em] mb-3">
@@ -186,7 +223,7 @@ export default function App() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
           <div className="lg:col-span-5 bg-zinc-900/40 border border-zinc-800 p-6 rounded-xl shadow-2xl backdrop-blur-sm">
             <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-6 border-b border-zinc-800 pb-3 flex items-center gap-2">
-              <span>📝</span> Formulir Dokumen Diplomasi
+              <span>📝</span> {"Formulir Dokumen Diplomasi"}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-5 text-xs">
               <div>
@@ -259,21 +296,70 @@ export default function App() {
                   </select>
                 </div>
               </div>
-              <div>
-                <label className="block text-zinc-500 uppercase font-bold mb-2 tracking-wider">
-                  Nilai Upeti Ditawarkan
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Misal: 500 Juta Berry / 2 Peti Sake"
-                  value={formData.tribute}
-                  onChange={(e) =>
-                    setFormData({ ...formData, tribute: e.target.value })
-                  }
-                  className="w-full bg-zinc-950 border border-zinc-800 p-3 rounded-lg text-zinc-200 outline-none focus:border-amber-500 transition-colors"
-                />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-zinc-500 uppercase font-bold mb-2 tracking-wider">
+                    Nominal Berry
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    placeholder="0"
+                    value={formData.tribute_amount}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        tribute_amount: e.target.value,
+                      })
+                    }
+                    className="w-full bg-zinc-950 border border-zinc-800 p-3 rounded-lg text-zinc-200 outline-none focus:border-amber-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-zinc-500 uppercase font-bold mb-2 tracking-wider">
+                    Keterangan Barang
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Misal: Sake Binks"
+                    value={formData.tribute_desc}
+                    onChange={(e) =>
+                      setFormData({ ...formData, tribute_desc: e.target.value })
+                    }
+                    className="w-full bg-zinc-950 border border-zinc-800 p-3 rounded-lg text-zinc-200 outline-none focus:border-amber-500 transition-colors"
+                  />
+                </div>
               </div>
+
+              <div className="bg-zinc-950 border border-indigo-900/40 p-4 rounded-lg mt-4 flex items-center justify-between">
+                <div>
+                  <span className="text-indigo-400 font-bold text-[10px] uppercase tracking-widest block mb-1">
+                    AI Acceptance Forecaster
+                  </span>
+                  {predictionScore !== null ? (
+                    <span className="text-2xl font-black text-indigo-300">
+                      {predictionScore}%{" "}
+                      <span className="text-[10px] text-zinc-500 font-normal tracking-wide">
+                        Peluang Diterima
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-xs text-zinc-500 italic">
+                      Hitung probabilitas persetujuan...
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handlePredict}
+                  disabled={isPredicting}
+                  className="bg-indigo-950/50 hover:bg-indigo-900/60 border border-indigo-900/50 text-indigo-400 text-[10px] uppercase font-bold px-4 py-2 rounded transition-colors cursor-pointer"
+                >
+                  {isPredicting ? "Memproses Tensor..." : "Kalkulasi AI"}
+                </button>
+              </div>
+
               <button
                 type="submit"
                 disabled={isPrinting}
@@ -358,7 +444,8 @@ export default function App() {
                       Nilai Konsesi / Upeti
                     </span>
                     <p className="text-zinc-300 italic text-xs leading-relaxed bg-zinc-950 p-2.5 rounded border border-zinc-900 font-serif">
-                      "{ticket.tribute}"
+                      "{(ticket.tributeAmount || 0).toLocaleString("id-ID")}{" "}
+                      Berry — {ticket.tributeDesc}"
                     </p>
                   </div>
                 </div>
